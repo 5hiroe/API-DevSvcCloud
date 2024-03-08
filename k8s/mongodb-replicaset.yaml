@@ -1,0 +1,50 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: my-mongo-replica-set
+  namespace: default
+spec:
+  members: 3  # Number of replicas in the set
+  type: ReplicaSet
+  version: "4.4.0"  # Version of MongoDB
+  security:
+    authentication:
+      modes:
+        - SCRAM
+  users:
+    - name: my-user
+      db: admin
+      passwordSecretRef:
+        name: my-mongo-user-password
+      roles:
+        - name: readWrite
+          db: my-database
+      scramCredentialsSecretName: my-user-scram-credentials
+  statefulSet:
+    spec:
+      selector:
+        matchLabels:
+          app: mongo  # This should match the label of your MongoDB pods
+      serviceName: "mongodb"
+      replicas: 3
+      template:
+        metadata:
+          labels:
+            app: mongo  # This should match the selector above
+        spec:
+          containers:
+            - name: mongod
+              image: mongo:4.4.6  # Use the desired MongoDB image
+              ports:
+                - containerPort: 27017
+              volumeMounts:
+                - name: mongodb-data
+                  mountPath: /data/db
+      volumeClaimTemplates:
+        - metadata:
+            name: mongodb-data
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 10Gi  # Size of the storage
